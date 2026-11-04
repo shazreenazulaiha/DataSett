@@ -1,3 +1,8 @@
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import javax.swing.*;
+
 interface Price {
     void getPrice(Customer c);
 }
@@ -103,16 +108,184 @@ class Car implements Price {
     }
 }
 
-public class PriceApp {
-    public static void main(String[] args) {
+// GUI
+public class PriceApp extends JFrame {
+    private JComboBox itemBox = new JComboBox(new String[] {"SmartPhone", "Laptop", "Car"});
+    private JLabel itemNameLabel = new JLabel("Product Name:");
+    private JTextField itemNameField = new JTextField();
+    private JTextField priceField = new JTextField();
+    private JTextField customerField = new JTextField();
+    private JTextField salaryField = new JTextField();
+    private JTextArea output = new JTextArea(12, 40);
+
+    public PriceApp() {
+        super("Price Management System");
+
+        // ----- title -----
+        JLabel title = new JLabel("PRICE MANAGEMENT SYSTEM", JLabel.CENTER);
+        title.setFont(new Font("Arial", Font.BOLD, 24));
+        title.setForeground(new Color(30, 90, 150));
+        title.setBorder(BorderFactory.createEmptyBorder(10, 10, 5, 10));
+
+        // ----- form -----
+        JPanel form = new JPanel(new GridLayout(6, 2, 8, 8));
+        form.setBorder(BorderFactory.createTitledBorder("Customer Wants To Buy"));
+
+        JButton checkBtn = new JButton("Check Purchase");
+        JButton demoBtn = new JButton("Run Demo");
+
+        form.add(new JLabel("Item Type:"));
+        form.add(itemBox);
+        form.add(itemNameLabel);
+        form.add(itemNameField);
+        form.add(new JLabel("Price (RM):"));
+        form.add(priceField);
+        form.add(new JLabel("Customer Name:"));
+        form.add(customerField);
+        form.add(new JLabel("Customer Salary (RM):"));
+        form.add(salaryField);
+        form.add(checkBtn);
+        form.add(demoBtn);
+
+        // ----- output -----
+        output.setEditable(false);
+        output.setFont(new Font("Courier New", Font.PLAIN, 12));
+        JScrollPane scroll = new JScrollPane(output);
+        scroll.setBorder(BorderFactory.createTitledBorder("Output"));
+
+        // ----- clear button -----
+        JButton clearBtn = new JButton("Clear All");
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        bottom.add(clearBtn);
+
+        JPanel center = new JPanel(new BorderLayout(5, 5));
+        center.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+        center.add(form, BorderLayout.NORTH);
+        center.add(scroll, BorderLayout.CENTER);
+
+        setLayout(new BorderLayout());
+        add(title, BorderLayout.NORTH);
+        add(center, BorderLayout.CENTER);
+        add(bottom, BorderLayout.SOUTH);
+
+        // ----- events -----
+        itemBox.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                updateForm();
+            }
+        });
+        checkBtn.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                checkPurchase();
+            }
+        });
+        demoBtn.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                runDemo();
+            }
+        });
+        clearBtn.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                output.setText("");
+                clearFields();
+            }
+        });
+
+        updateForm();
+
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setSize(660, 640);
+        setLocationRelativeTo(null);
+    }
+
+    // Cars use a brand, products use a name
+    private void updateForm() {
+        if (itemBox.getSelectedIndex() == 2) {
+            itemNameLabel.setText("Car Brand:");
+        } else {
+            itemNameLabel.setText("Product Name:");
+        }
+    }
+
+    private void clearFields() {
+        itemNameField.setText("");
+        priceField.setText("");
+        customerField.setText("");
+        salaryField.setText("");
+    }
+
+    // getPrice() prints to the console, so capture that text for the output box
+    private String capture(Price item, Customer c) {
+        PrintStream old = System.out;
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        System.setOut(new PrintStream(bos));
+        try {
+            item.getPrice(c);
+        } finally {
+            System.out.flush();
+            System.setOut(old);
+        }
+        return bos.toString().replace("\r", "");
+    }
+
+    private void checkPurchase() {
+        String itemName = itemNameField.getText().trim();
+        String customerName = customerField.getText().trim();
+
+        if (itemName.length() == 0 || customerName.length() == 0) {
+            JOptionPane.showMessageDialog(this, "Please fill in all the fields.",
+                    "Missing data", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        double price;
+        double salary;
+        try {
+            price = Double.parseDouble(priceField.getText().trim());
+            salary = Double.parseDouble(salaryField.getText().trim());
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Price and salary must be valid numbers.",
+                    "Invalid input", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Price item;
+        int type = itemBox.getSelectedIndex();
+        if (type == 0) {
+            item = new SmartPhone("SmartPhone", itemName, price);
+        } else if (type == 1) {
+            item = new Laptop("Laptop", itemName, price);
+        } else {
+            item = new Car(itemName, price);
+        }
+
+        Customer c = new Customer(customerName, salary);
+        output.append(capture(item, c) + "\n");
+
+        clearFields();
+        itemNameField.requestFocus();
+    }
+
+    // Same data as your original main
+    private void runDemo() {
         SmartPhone sp = new SmartPhone("SmartPhone", "Iphone 14 ProMax", 5500.00);
         Laptop lp = new Laptop("Laptop", "Lenovo Yoga", 6000.00);
         Car c = new Car("BMW", 200000);
         Customer c1 = new Customer("Sally", 3000.00);
         Customer c2 = new Customer("Aaron", 8000.00);
         Customer c3 = new Customer("Simon", 10000.00);
-        sp.getPrice(c1);
-        lp.getPrice(c2);
-        c.getPrice(c3);
+
+        output.append("========== DEMO ==========\n");
+        output.append(capture(sp, c1) + "\n");
+        output.append(capture(lp, c2) + "\n");
+        output.append(capture(c, c3) + "\n");
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                new PriceApp().setVisible(true);
+            }
+        });
     }
 }
